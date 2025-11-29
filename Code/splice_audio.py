@@ -11,7 +11,7 @@ def split_audio_silero_vad(
     min_speech_ms=200,
     pad_ms=150,
     merge_speech_gap_ms=150,
-    device="cuda",
+    device="cpu",
 ):
     """
     Split an audio file into speech segments using Silero VAD (torch.hub).
@@ -58,7 +58,7 @@ def split_audio_silero_vad(
         if segment.shape[-1] < int(sr * (min_speech_ms / 1000)):
             continue  # skip too short
 
-        out_path = os.path.join(output_dir, f"klein_paul_{i:03d}.wav")
+        out_path = os.path.join(output_dir, f"kaffee_tus_{i:03d}.wav")
         sf.write(out_path, segment.squeeze().cpu().numpy(), sr)
         print(f"Saved: {out_path} ({(end - start) / sr:.2f}s)")
 
