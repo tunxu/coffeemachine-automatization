@@ -208,6 +208,7 @@ __marimo__/
 
 #data folder
 data/
+data_min/
 
 #Model checkpoints
 checkpoints/
