@@ -212,3 +212,6 @@ data_min/
 
 #Model checkpoints
 checkpoints/
+#Saved models
+kws_onnx/
+kws_tflite/
