@@ -5,6 +5,7 @@ import torch.nn as nn
 import torchaudio.functional as F
 import torchaudio.transforms as T
 from torch.utils.data import Dataset, DataLoader
+from model_file import KeywordCNN, KeywordDSCNN, KeywordMLP
 import tensorflow as tf
 import numpy as np
 import subprocess
@@ -138,21 +139,37 @@ transform = T.MelSpectrogram(
 
 full_dataset = MyAudioDataset("data", sample_rate=16000, transform=transform)
 
-def representative_dataset_gen(dataset, num_samples=200):
-    # yields a list of one input tensor per sample, as required by TFLite
+def representative_dataset_gen(dataset, num_samples=200, target_time=32):
+    """
+    Yields [input] where input is NHWC float32 with shape (1, 64, 32, 1).
+    This is used ONLY for calibration; TFLite will quantize internally.
+    """
     for i in range(min(num_samples, len(dataset))):
-        features, _ = dataset[i]  # features: torch.Tensor, likely [1, 64, 30]
+        features, _ = dataset[i]  # torch.Tensor, e.g. [1, 64, T]
         x = features.detach().cpu().numpy().astype(np.float32)
 
-        # make it NHWC with batch: (1, 64, 30, 1)
-        # from (1, 64, 30) -> (64, 30, 1) -> (1, 64, 30, 1)
-        x = np.transpose(x, (1, 2, 0))
-        x = x[None, ...]
+        # Ensure shape [1, 64, T]
+        if x.ndim == 2:           # [64, T]
+            x = x[None, ...]      # [1, 64, T]
+        if x.ndim != 3 or x.shape[0] != 1 or x.shape[1] != 64:
+            raise ValueError(f"Unexpected feature shape from dataset: {x.shape}")
+
+        # Pad/crop time to 32
+        T = x.shape[2]
+        if T > target_time:
+            x = x[:, :, :target_time]
+        elif T < target_time:
+            pad = target_time - T
+            x = np.pad(x, ((0, 0), (0, 0), (0, pad)), mode="constant")
+
+        # NCHW-ish [1,64,32] -> NHWC [1,64,32,1]
+        x = np.transpose(x, (1, 2, 0))  # [64,32,1]
+        x = x[None, ...]                # [1,64,32,1]
 
         yield [x]
-    
+
 def convert_pth_to_onnx(pth_model_path, onnx_model_path):
-    model = KeywordCNNv2(num_classes=5)
+    model = KeywordMLP(num_classes=5)
     state_dict = torch.load(pth_model_path, map_location="cpu")
     model.load_state_dict(state_dict)
     model.eval()
@@ -186,26 +203,32 @@ def convert_onnx_to_tflite(onnx_model_path, tflite_model_path):
         "-o", out_dir,
     ])
 
-    saved_model_dir = os.path.join(out_dir)
+    saved_model_dir = out_dir  # onnx2tf writes SavedModel directly to out_dir
 
-    # 2) SavedModel -> TFLite
+    # 2) SavedModel -> FULL INT8 TFLite
     converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
-    converter.representative_dataset = lambda: representative_dataset_gen(full_dataset, num_samples=200)
+
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    converter.target_spec.supported_types = [tf.int8]  # smaller file, usually safe
+    converter.representative_dataset = lambda: representative_dataset_gen(full_dataset, num_samples=200, target_time=32)
+
+    # Force integer-only kernels (good for MCUs) and int8 I/O
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    converter.inference_input_type = tf.int8
+    converter.inference_output_type = tf.int8
+
     tflite_model = converter.convert()
 
     with open(tflite_model_path, "wb") as f:
         f.write(tflite_model)
 
-    print(f"Saved TFLite model to: {tflite_model_path}")
+    print(f"Saved INT8 TFLite model to: {tflite_model_path}")
 if __name__ == "__main__":
     print(os.getcwd())
     convert_pth_to_onnx(
-        pth_model_path="checkpoints/kws_model_f32_less_layers.pt",
-        onnx_model_path="kws_onnx/kws_model_f32_less_layers.onnx",
+        pth_model_path="checkpoints/MLP/kws_model.pt",
+        onnx_model_path="kws_onnx/kws_model_MLP.onnx",
     )
     convert_onnx_to_tflite(
-        onnx_model_path="kws_onnx/kws_model_f32_less_layers.onnx",
-        tflite_model_path="kws_tflite/kws_model_f32_less_layers.tflite",
+        onnx_model_path="kws_onnx/kws_model_MLP.onnx",
+        tflite_model_path="kws_tflite/int8/kws_model_int8_MLP.tflite",
     )
