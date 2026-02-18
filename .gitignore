@@ -215,3 +215,4 @@ checkpoints/
 #Saved models
 kws_onnx/
 kws_tflite/
+kws_other_input/

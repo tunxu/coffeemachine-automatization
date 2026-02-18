@@ -12,7 +12,7 @@ from dataset_file import MyAudioDataset
 # -----------------------
 # CONFIG
 # -----------------------
-TFLITE_PATH = "kws_tflite/int8/kws_model_int8_MLP.tflite"
+TFLITE_PATH = "kws_tflite/int8/kws_model_int8_DSCNNv2.tflite"
 
 SAMPLE_RATE = 16000
 N_MELS = 64
@@ -119,7 +119,7 @@ def dequantize_int8(x_q: np.ndarray, scale: float, zero_point: int) -> np.ndarra
 # -----------------------
 # TFLite eval
 # -----------------------
-def run_eval_tflite(test_loader, label_names=None, save_cm_path="test_results/confusion_matrix_int8_MLP.png"):
+def run_eval_tflite(test_loader, label_names=None, save_cm_path="test_results/confusion_matrix_int8_DSCNNv2.png"):
     if not os.path.exists(TFLITE_PATH):
         raise FileNotFoundError(f"TFLite model not found: {TFLITE_PATH} (cwd={os.getcwd()})")
 

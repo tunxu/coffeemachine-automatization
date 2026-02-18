@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch
 
 class KeywordCNNv2(nn.Module):
     def __init__(self, num_classes):
@@ -131,4 +132,42 @@ class KeywordMLP(nn.Module):
 
         x = nn.functional.relu(self.fc1(x))
         x = self.fc2(x)  # logits
+        return x
+    
+class KeywordDSCNNv2(nn.Module):
+    def __init__(self, num_classes):
+        super().__init__()
+        # Layer 1: Standard Conv
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(32)
+
+        # Layer 2: Depthwise Separable
+        self.dw1 = nn.Conv2d(32, 32, kernel_size=3, padding=1, groups=32, bias=False)
+        self.pw1 = nn.Conv2d(32, 64, kernel_size=1, bias=False)
+
+        # Layer 3: Depthwise Separable
+        self.dw2 = nn.Conv2d(64, 64, kernel_size=3, padding=1, groups=64, bias=False)
+        self.pw2 = nn.Conv2d(64, 64, kernel_size=1, bias=False)
+
+        self.pool = nn.MaxPool2d(2, 2)
+        # Replacing Mean with AdaptiveAvgPool2d for better TFLite conversion
+        self.avg_pool = nn.AdaptiveAvgPool2d((1, 1)) 
+        self.fc = nn.Linear(64, num_classes)
+
+    def forward(self, x):
+        # Layer 1
+        x = nn.functional.relu(self.bn1(self.conv1(x)))
+        x = self.pool(x)
+
+        # Layer 2
+        x = nn.functional.relu(self.pw1(nn.functional.relu(self.dw1(x))))
+        x = self.pool(x)
+
+        # Layer 3
+        x = nn.functional.relu(self.pw2(nn.functional.relu(self.dw2(x))))
+        
+        # Flatten for the Linear layer
+        x = self.avg_pool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
         return x

@@ -5,7 +5,7 @@ import torch.nn as nn
 import torchaudio.functional as F
 import torchaudio.transforms as T
 from torch.utils.data import Dataset, DataLoader
-from model_file import KeywordCNN, KeywordDSCNN, KeywordMLP
+from model_file import KeywordCNN, KeywordDSCNN, KeywordMLP,KeywordDSCNNv2
 import tensorflow as tf
 import numpy as np
 import subprocess
@@ -147,6 +147,8 @@ def representative_dataset_gen(dataset, num_samples=200, target_time=32):
     for i in range(min(num_samples, len(dataset))):
         features, _ = dataset[i]  # torch.Tensor, e.g. [1, 64, T]
         x = features.detach().cpu().numpy().astype(np.float32)
+        if x.max() > 0:
+            x = x / x.max()
 
         # Ensure shape [1, 64, T]
         if x.ndim == 2:           # [64, T]
@@ -169,7 +171,7 @@ def representative_dataset_gen(dataset, num_samples=200, target_time=32):
         yield [x]
 
 def convert_pth_to_onnx(pth_model_path, onnx_model_path):
-    model = KeywordMLP(num_classes=5)
+    model = KeywordDSCNNv2(num_classes=5)
     state_dict = torch.load(pth_model_path, map_location="cpu")
     model.load_state_dict(state_dict)
     model.eval()
@@ -184,8 +186,7 @@ def convert_pth_to_onnx(pth_model_path, onnx_model_path):
         onnx_model_path,
         opset_version=18,
         input_names=["input"],
-        output_names=["logits"],
-        dynamic_axes={"input": {0: "batch"}, "logits": {0: "batch"}},
+        output_names=["logits"]
     )
 
     print(f"Saved ONNX model to: {onnx_model_path}")
@@ -225,10 +226,10 @@ def convert_onnx_to_tflite(onnx_model_path, tflite_model_path):
 if __name__ == "__main__":
     print(os.getcwd())
     convert_pth_to_onnx(
-        pth_model_path="checkpoints/MLP/kws_model.pt",
-        onnx_model_path="kws_onnx/kws_model_MLP.onnx",
+        pth_model_path="checkpoints/DSCNNv2/kws_model.pt",
+        onnx_model_path="kws_onnx/kws_model_DSCNNv2.onnx",
     )
     convert_onnx_to_tflite(
-        onnx_model_path="kws_onnx/kws_model_MLP.onnx",
-        tflite_model_path="kws_tflite/int8/kws_model_int8_MLP.tflite",
+        onnx_model_path="kws_onnx/kws_model_DSCNNv2.onnx",
+        tflite_model_path="kws_tflite/int8/kws_model_int8_DSCNNv2.tflite",
     )

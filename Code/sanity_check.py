@@ -31,8 +31,8 @@ def inspect_io(path):
         print("OUT", d["name"], d["shape"], d["dtype"], d.get("quantization"))
 
 if __name__ == "__main__":
-    a = "model_yes_no.tflite"
-    b = "kws_tflite/int8/kws_model_int8_MLP.tflite"
+    a = "microSpeechExampleMode.tflite"
+    b = "kws_tflite/int8/kws_model_int8_BNSE.tflite"
 
     inspect_io(a)
     inspect_io(b)
