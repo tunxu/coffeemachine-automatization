@@ -207,7 +207,7 @@ marimo/_lsp/
 __marimo__/
 
 #data folder
-data/
+Code/data/
 data_min/
 
 #voice folder
