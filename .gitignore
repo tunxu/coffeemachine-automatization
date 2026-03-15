@@ -210,6 +210,9 @@ __marimo__/
 data/
 data_min/
 
+#voice folder
+piper-voices-de/
+
 #Model checkpoints
 checkpoints/
 #Saved models
