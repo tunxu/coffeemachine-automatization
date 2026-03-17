@@ -49,6 +49,7 @@ class CoffeeSpeechDataset(Dataset):
 
         if self.transform:
             features = self.transform(waveform)
+            features = torch.log(1 + features)  # Apply log for better dynamic range
         else:
             features = waveform
 
