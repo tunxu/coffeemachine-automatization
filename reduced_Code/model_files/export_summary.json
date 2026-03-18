@@ -1,0 +1,33 @@
+{
+  "checkpoint_path": "model_files/kws_model.pt",
+  "float_tflite_path": "model_files/float32/model_float32.tflite",
+  "int8_tflite_path": "model_files/int8/model_int8_candidate.tflite",
+  "input_shape_nchw": [
+    1,
+    1,
+    64,
+    101
+  ],
+  "num_classes": 4,
+  "quantized_export_method": null,
+  "float_interface_is_int8": false,
+  "int8_candidate_interface_is_int8": false,
+  "float_model_info": {
+    "path": "model_files/float32/model_float32.tflite",
+    "inputs": [
+      {
+        "name": "serving_default_args_0:0",
+        "shape": [
+          1,
+          1,
+          64,
+          101
+        ],
+        "dtype": "<class 'numpy.float32'>",
+        "quantization": [
+          0.0,
+          0
+        ],
+        "quantization_parameters": {
+          "raw": {
+            "scales": 
